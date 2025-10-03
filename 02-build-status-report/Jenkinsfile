@@ -1,38 +1,71 @@
-// Use the GitHub Status Wrapper plugin for simpler integration
-@Library('github-api@1.325.0') _ // Example for older versions, use latest
-import org.jenkinsci.plugins.github.status.GitHubCommitStatusSetter
-pipeline {
-    agent any
+// // Use the GitHub Status Wrapper plugin for simpler integration
+// @Library('github-api@1.325.0') _ // Example for older versions, use latest
+// import org.jenkinsci.plugins.github.status.GitHubCommitStatusSetter
+// pipeline {
+//     agent any
 
-    stages {
-        stage('Build') {
-            steps {
-                // Your build commands here
-                echo "Building the project..."
+//     stages {
+//         stage('Build') {
+//             steps {
+//                 // Your build commands here
+//                 echo "Building the project..."
+//             }
+//         }
+//         stage('Test') {
+//             steps {
+//                 // Your test commands here
+//                 echo "Running tests..."
+//             }
+//         }
+//     }
+//     // The post section executes after all stages complete
+//     post {
+//         always {
+//             // Use the credential created earlier
+//             withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+//                 // Set the status based on the build result
+//                 if (currentBuild.result == 'SUCCESS') {
+//                     // Notify GitHub of a successful build
+//                     sh "curl -H 'Authorization: token ${GITHUB_TOKEN}' -X POST -d '{\"state\": \"success\", \"target_url\": \"${env.BUILD_URL}\", \"description\": \"Build succeeded!\", \"context\": \"Jenkins CI\"}' https://api.github.com/repos/${env.CHANGE_OWNER}/${env.CHANGE_REPOSITORY}/statuses/${env.CHANGE_ID}"
+//                 } else {
+//                     // Notify GitHub of a failed build
+//                     sh "curl -H 'Authorization: token ${GITHUB_TOKEN}' -X POST -d '{\"state\": \"failure\", \"target_url\": \"${env.BUILD_URL}\", \"description\": \"Build failed!\", \"context\": \"Jenkins CI\"}' https://api.github.com/repos/${env.CHANGE_OWNER}/${env.CHANGE_REPOSITORY}/statuses/${env.CHANGE_ID}"
+//                 }
+//             }
+//         }
+//     }
+// }
+
+
+
+    pipeline {
+        agent any
+        stages {
+            stage('Build') {
+                steps {
+                    echo 'Building the project...'
+                    // Your build steps here
+                    githubNotify(context: 'ci/jenkins/build', status: 'pending', description: 'Build in progress')
+                }
+            }
+            stage('Test') {
+                steps {
+                    echo 'Running tests...'
+                    // Your test steps here
+                    githubNotify(context: 'ci/jenkins/test', status: 'success', description: 'Tests passed')
+                }
             }
         }
-        stage('Test') {
-            steps {
-                // Your test commands here
-                echo "Running tests..."
-            }
-        }
-    }
-    // The post section executes after all stages complete
-    post {
-        always {
-            // Use the credential created earlier
-            withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
-                // Set the status based on the build result
-                if (currentBuild.result == 'SUCCESS') {
-                    // Notify GitHub of a successful build
-                    sh "curl -H 'Authorization: token ${GITHUB_TOKEN}' -X POST -d '{\"state\": \"success\", \"target_url\": \"${env.BUILD_URL}\", \"description\": \"Build succeeded!\", \"context\": \"Jenkins CI\"}' https://api.github.com/repos/${env.CHANGE_OWNER}/${env.CHANGE_REPOSITORY}/statuses/${env.CHANGE_ID}"
-                } else {
-                    // Notify GitHub of a failed build
-                    sh "curl -H 'Authorization: token ${GITHUB_TOKEN}' -X POST -d '{\"state\": \"failure\", \"target_url\": \"${env.BUILD_URL}\", \"description\": \"Build failed!\", \"context\": \"Jenkins CI\"}' https://api.github.com/repos/${env.CHANGE_OWNER}/${env.CHANGE_REPOSITORY}/statuses/${env.CHANGE_ID}"
+        post {
+            always {
+                // Update final status based on build result
+                script {
+                    if (currentBuild.result == 'SUCCESS') {
+                        githubNotify(context: 'ci/jenkins/overall', status: 'success', description: 'Pipeline completed successfully')
+                    } else {
+                        githubNotify(context: 'ci/jenkins/overall', status: 'failure', description: 'Pipeline failed')
+                    }
                 }
             }
         }
     }
-}
-
